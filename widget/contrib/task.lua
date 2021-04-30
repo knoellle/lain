@@ -43,7 +43,8 @@ function task.show(scr)
                 preset = task.notification_preset,
                 title  = "task next",
                 text   = markup.font(task.notification_preset.font,
-                         awful.util.escape(f:gsub("\n*$", "")))
+                         awful.util.escape(f:gsub("\n*$", ""))),
+                destroy = function () task.notification = nil end
             }
         end
     end)
