@@ -22,31 +22,31 @@ local function factory(args)
     local settings = args.settings or function() end
 
     pulse.devicetype = args.devicetype or "sink"
-    pulse.cmd = args.cmd or "pacmd list-" .. pulse.devicetype .. "s | sed -n -e '/*/,$!d' -e '/index/p' -e '/base volume/d' -e '/volume:/p' -e '/muted:/p' -e '/device\\.string/p'"
+    pulse.cmd = args.cmd or "pactl list " .. pulse.devicetype .. "s | grep -e '^\\s*Volume:' -e 'Mute:' -e 'device.string'"
 
     function pulse.update()
         helpers.async({ shell, "-c", type(pulse.cmd) == "string" and pulse.cmd or pulse.cmd() },
         function(s)
             volume_now = {
-                index  = string.match(s, "index: (%S+)") or "N/A",
                 device = string.match(s, "device.string = \"(%S+)\"") or "N/A",
-                muted  = string.match(s, "muted: (%S+)") or "N/A"
+                mute  = string.match(s, "Mute: (%S+)") or "N/A",
+                raw = s,
             }
 
-            pulse.device = volume_now.index
+            pulse.device = volume_now.device
 
             local ch = 1
-            volume_now.channel = {}
-            for v in string.gmatch(s, ":.-(%d+)%%") do
-                volume_now.channel[ch] = v
+            for v in string.gmatch(s, "(%d+)%%") do
+                volume_now[ch] = v
+                volume_now.level = v
                 ch = ch + 1
             end
 
-            volume_now.left  = volume_now.channel[1] or "N/A"
-            volume_now.right = volume_now.channel[2] or "N/A"
+            volume_now.left  = volume_now[1] or "N/A"
+            volume_now.right = volume_now[2] or "N/A"
 
             widget = pulse.widget
-            settings()
+            settings(widget, volume_now)
         end)
     end
 
